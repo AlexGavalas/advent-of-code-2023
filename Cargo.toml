@@ -16,4 +16,5 @@ members = [
     "src/day-5",
     "src/day-6",
     "src/day-7",
+    "src/day-8",
 ]
