@@ -1,32 +1,67 @@
+use crate::helpers::{format_map_entry, get_next_direction};
 use std::collections::HashMap;
 
-fn format_map_entry(map_entry: &str) -> (&str, &str, &str) {
-    let parts = map_entry
-        .split_terminator(&['=', ',', '(', ')'])
-        .filter_map(|v| {
-            let trimmed = v.trim();
+fn move_n_steps<'a>(
+    n: u64,
+    init_directions_index: usize,
+    directions: &'a Vec<char>,
+    hash_map: &'a HashMap<&'a str, (&'a str, &'a str, &'a str)>,
+    init_positions: Vec<(&'a str, &'a str, &'a str)>,
+) -> (usize, Vec<(&'a str, &'a str, &'a str)>) {
+    let mut positions = init_positions;
+    let mut directions_index = init_directions_index;
 
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed)
-            }
-        })
-        .collect::<Vec<_>>();
+    for _ in 0..n {
+        let (direction, new_index) = get_next_direction(&directions, directions_index);
+        directions_index = new_index;
 
-    (parts[0], parts[1], parts[2])
-}
-
-fn get_next_direction(directions: &Vec<char>, directions_index: usize) -> (char, usize) {
-    let mut index = directions_index;
-
-    if index == directions.len() {
-        index = 0;
+        positions = positions
+            .iter()
+            .map(|(_, left, right)| match direction {
+                'R' => hash_map.get(right).unwrap().to_owned(),
+                'L' => hash_map.get(left).unwrap().to_owned(),
+                _ => panic!("Unknown direction: {}", direction),
+            })
+            .collect::<Vec<_>>();
     }
 
-    let direction = directions[index];
+    (directions_index, positions)
+}
 
-    (direction, index + 1)
+#[derive(Debug)]
+struct Finish<'a> {
+    steps: u64,
+    directions_index: usize,
+    positions: Vec<(&'a str, &'a str, &'a str)>,
+}
+
+fn find_next_finish<'a>(
+    init_directions_index: usize,
+    directions: &'a Vec<char>,
+    hash_map: &'a HashMap<&'a str, (&'a str, &'a str, &'a str)>,
+    init_positions: Vec<(&'a str, &'a str, &'a str)>,
+) -> Finish<'a> {
+    let mut inner_steps = 0;
+    let mut inner_positions = init_positions;
+    let mut inner_dir_index = init_directions_index;
+
+    loop {
+        inner_steps += 1;
+
+        let (new_index, new_positions) =
+            move_n_steps(1, inner_dir_index, &directions, &hash_map, inner_positions);
+
+        inner_dir_index = new_index;
+        inner_positions = new_positions;
+
+        if !inner_positions.iter().any(|v| !v.0.ends_with("Z")) {
+            break Finish {
+                steps: inner_steps,
+                directions_index: inner_dir_index,
+                positions: inner_positions,
+            };
+        }
+    }
 }
 
 pub fn solve(lines: &Vec<String>) -> u64 {
@@ -61,19 +96,49 @@ pub fn solve(lines: &Vec<String>) -> u64 {
     let mut directions_index = 0;
 
     loop {
-        steps += 1;
-
-        let (direction, new_index) = get_next_direction(&directions, directions_index);
-        directions_index = new_index;
-
-        positions = positions
+        let mut finishes = positions
             .iter()
-            .map(|(_, left, right)| match direction {
-                'R' => hash_map.get(right).unwrap().to_owned(),
-                'L' => hash_map.get(left).unwrap().to_owned(),
-                _ => panic!("Unknown direction: {}", direction),
+            .map(|&position| {
+                find_next_finish(directions_index, &directions, &hash_map, vec![position])
             })
             .collect::<Vec<_>>();
+
+        finishes.sort_by(|a, b| b.steps.cmp(&a.steps));
+
+        let c_steps = finishes.iter().map(|v| v.steps).collect::<Vec<_>>();
+
+        steps += c_steps[0];
+
+        directions_index = finishes[0].directions_index;
+
+        positions = finishes
+            .iter()
+            .flat_map(|v| v.positions.to_owned())
+            .collect::<Vec<_>>();
+
+        // NOT 23147
+
+        c_steps
+            .iter()
+            .map(|s| (c_steps[0] - s).rem_euclid(directions.len() as u64))
+            .collect::<Vec<_>>()
+            .iter()
+            .enumerate()
+            .for_each(|(i, &v)| {
+                if i != 0 {
+                    let (_new_index, new_positions) = move_n_steps(
+                        v,
+                        finishes[i].directions_index,
+                        &directions,
+                        &hash_map,
+                        vec![positions[i]],
+                    );
+
+                    positions[i] = new_positions[0];
+                } else {
+                    positions[0] = finishes[0].positions[0];
+                }
+            });
 
         if !positions.iter().any(|v| !v.0.ends_with("Z")) {
             break steps;

@@ -5,15 +5,15 @@ mod part_2;
 use utils::read_lines;
 
 fn get_input_file_path() -> &'static str {
-    "./src/day-8/src/input.txt"
+    "./src/day-10/src/input.txt"
 }
 
 fn main() {
-    println!("Hello, day 8!");
+    println!("Hello, day 10!");
 
     let lines = read_lines(get_input_file_path());
 
-    println!("Part 1: (19631) {}", part_1::solve(&lines));
+    println!("Part 1: (6725) {}", part_1::solve(&lines));
     println!("Part 2: () {}", part_2::solve(&lines));
 }
 
@@ -31,7 +31,7 @@ mod tests {
     fn test_part_1() {
         let lines = read_lines(get_test_input_file_path());
 
-        assert_eq!(19631, part_1::solve(&lines));
+        assert_eq!(6725, part_1::solve(&lines));
     }
 
     #[test]
@@ -43,6 +43,6 @@ mod tests {
 
     #[test]
     fn test_get_input_file_path() {
-        assert_eq!("./src/day-8/src/input.txt", get_input_file_path());
+        assert_eq!("./src/day-10/src/input.txt", get_input_file_path());
     }
 }
